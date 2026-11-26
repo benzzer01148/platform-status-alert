@@ -378,7 +378,49 @@ def check_feed(state: dict, first_run: bool, kind: str) -> list[tuple]:
 
 
 # ---------------------------------------------------------------- main
+def send_test() -> int:
+    """TEST_MESSAGE=1: send the newest incident + current overall status to every
+    channel, without touching state (no dedupe)."""
+    try:
+        summary = fetch_json("/api/v2/summary.json")
+        inc = fetch_json("/api/v2/incidents.json")["incidents"][0]
+        upd = sorted(inc.get("incident_updates") or [], key=lambda u: u.get("created_at") or "")[-1]
+        latest = incident_message(inc, upd)
+        overall = (summary.get("status") or {}).get("description", "")
+        comps = "\n".join(f"• {c['name']}: {STATUS_TH.get(c.get('status'), c.get('status'))}"
+                          for c in summary.get("components", []) if not c.get("group"))
+    except Exception as e:
+        print(f"JSON failed ({e}); using Atom", file=sys.stderr)
+        e0 = read_feed("atom")[0]
+        u = parse_feed_updates(e0["content"])[0]
+        latest = (f"[LINE API Status] {FEED_STATUS.get(u['status'].lower(), u['status'])}\n{e0['title']}\n"
+                  f"เวลา: {jst_to_th(u['when'])}\n\n{u['body']}\n\n{e0['link']}")
+        overall, comps = "", ""
+    text = "🧪 [ข้อความทดสอบ] ระบบแจ้งเตือนทำงานปกติ\n"
+    if overall:
+        text += f"\nสถานะตอนนี้: {overall}\n{comps}\n"
+    text += "\n— incident ล่าสุด —\n" + latest
+    if DRY_RUN:
+        print(text)
+        return 0
+    ch = channels()
+    if not ch:
+        print("No channel configured (set GOOGLE_CHAT_WEBHOOK_URL and/or LINE_CHANNEL_ACCESS_TOKEN)", file=sys.stderr)
+        return 1
+    rc = 0
+    for name, fn in ch.items():
+        try:
+            fn(text)
+            print(f"[{name}] test message sent")
+        except Exception as e:
+            rc = 1
+            print(f"[{name}] test message failed: {e}", file=sys.stderr)
+    return rc
+
+
 def main() -> int:
+    if os.environ.get("TEST_MESSAGE") == "1":
+        return send_test()
     state = load_state()
     first_run = not state.get("initialized")
     mode = os.environ.get("STATUS_SOURCE", "auto").lower()

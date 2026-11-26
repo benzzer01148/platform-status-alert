@@ -3,7 +3,12 @@ name: Status alerts (LINE API + Meta)
 on:
   schedule:
     - cron: "*/5 * * * *"   # every 5 minutes (GitHub may delay runs a few minutes)
-  workflow_dispatch: {}       # allow manual "Run workflow"
+  workflow_dispatch:           # allow manual "Run workflow"
+    inputs:
+      test_message:
+        description: "Send a test message (latest LINE incident + current status) to all channels"
+        type: boolean
+        default: false
 
 permissions:
   contents: write             # to commit state files (dedupe memory)
@@ -26,6 +31,12 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+
+      - name: Send test message
+        if: inputs.test_message
+        env:
+          TEST_MESSAGE: "1"
+        run: python monitor.py
 
       - name: LINE API status
         id: line
