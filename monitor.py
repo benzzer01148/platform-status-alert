@@ -54,23 +54,51 @@ UA = "line-status-alert/1.0"
 BKK = timezone(timedelta(hours=7))
 
 STATUS_TH = {
-    "operational": "✅ ปกติ (Operational)",
-    "degraded_performance": "🟡 ช้าลง (Degraded Performance)",
-    "partial_outage": "🟠 ใช้งานไม่ได้บางส่วน (Partial Outage)",
-    "major_outage": "🔴 ล่ม (Major Outage)",
-    "under_maintenance": "🔧 ปิดปรับปรุง (Maintenance)",
+    "operational": "🟢 ปกติ",
+    "degraded_performance": "🟡 ช้าลง",
+    "partial_outage": "🟠 ใช้งานไม่ได้บางส่วน",
+    "major_outage": "🔴 ล่ม",
+    "under_maintenance": "🔧 ปิดปรับปรุง",
 }
 INCIDENT_TH = {
-    "investigating": "🔴 กำลังตรวจสอบ (Investigating)",
-    "identified": "🟠 พบสาเหตุแล้ว (Identified)",
-    "monitoring": "🟡 กำลังเฝ้าดู (Monitoring)",
-    "resolved": "✅ แก้ไขแล้ว (Resolved)",
-    "postmortem": "📝 Postmortem",
-    "scheduled": "🗓 นัดปิดปรับปรุง (Scheduled)",
-    "in_progress": "🔧 กำลังปิดปรับปรุง (In progress)",
-    "verifying": "🟡 กำลังตรวจสอบ (Verifying)",
-    "completed": "✅ ปิดปรับปรุงเสร็จ (Completed)",
+    "investigating": "🔴 กำลังตรวจสอบ",
+    "identified": "🟠 พบสาเหตุแล้ว กำลังแก้ไข",
+    "update": "🟠 อัปเดตสถานการณ์",
+    "monitoring": "🟡 แก้ไขแล้ว กำลังเฝ้าดู",
+    "resolved": "✅ แก้ไขเสร็จแล้ว",
+    "postmortem": "📝 สรุปเหตุการณ์",
+    "scheduled": "🗓 นัดปิดปรับปรุง",
+    "in_progress": "🔧 กำลังปิดปรับปรุง",
+    "verifying": "🟡 กำลังตรวจสอบผล",
+    "completed": "✅ ปิดปรับปรุงเสร็จ",
 }
+LINE_ = "━━━━━━━━━━━━━━"
+
+
+def card(header: str, title: str = "", rows: list | None = None, detail: str = "", link: str = "") -> str:
+    """One layout for every alert, readable in both LINE and Google Chat."""
+    out = [header, LINE_]
+    if title:
+        out.append(f"📌 {title}")
+    for label, value in rows or []:
+        if value:
+            out.append(f"{label} {value}")
+    if detail:
+        out += ["", "📝 รายละเอียด", detail.strip()[:1200]]
+    if link:
+        out += ["", f"🔗 {link}"]
+    return "\n".join(out)
+
+
+def headline(source: str, status_key: str) -> str:
+    k = (status_key or "").lower()
+    if k in ("resolved", "completed", "postmortem"):
+        return f"✅ {source} กลับมาใช้งานได้แล้ว"
+    if k in ("monitoring", "verifying"):
+        return f"🟡 {source} แก้ไขแล้ว กำลังเฝ้าดู"
+    if k in ("scheduled", "in_progress"):
+        return f"🔧 {source} ปิดปรับปรุง"
+    return f"🚨 {source} มีปัญหา"
 
 
 # ---------------------------------------------------------------- helpers
@@ -85,7 +113,7 @@ def fmt_time(iso: str | None) -> str:
         return ""
     try:
         dt = datetime.fromisoformat(iso.replace("Z", "+00:00"))
-        return dt.astimezone(BKK).strftime("%d/%m/%Y %H:%M") + " (เวลาไทย)"
+        return dt.astimezone(BKK).strftime("%d/%m/%Y %H:%M น.")
     except ValueError:
         return iso
 
@@ -208,15 +236,15 @@ def fetch_json(path: str) -> dict:
 
 def incident_message(inc: dict, upd: dict) -> str:
     comps = ", ".join(c.get("name", "") for c in inc.get("components") or []) or "-"
-    status = INCIDENT_TH.get(upd.get("status", ""), upd.get("status", ""))
-    body = strip_html(upd.get("body", ""))
-    link = inc.get("shortlink") or f"{BASE}/incidents/{inc.get('id')}"
-    return (
-        f"[LINE API Status] {status}\n"
-        f"{inc.get('name', '')}\n"
-        f"บริการ: {comps}\n"
-        f"เวลา: {fmt_time(upd.get('created_at') or upd.get('display_at'))}\n\n"
-        f"{body}\n\n{link}"
+    st = upd.get("status", "")
+    return card(
+        headline("LINE API", st),
+        inc.get("name", ""),
+        [("🔧 บริการ:", comps),
+         ("📍 สถานะ:", INCIDENT_TH.get(st, st)),
+         ("🕒 เวลา:", fmt_time(upd.get("created_at") or upd.get("display_at")))],
+        strip_html(upd.get("body", "")),
+        inc.get("shortlink") or f"{BASE}/incidents/{inc.get('id')}",
     )
 
 
@@ -267,19 +295,17 @@ def check_json(state: dict, first_run: bool) -> list[tuple]:
         if old != new_status:
             changes.append((cid, c.get("name", ""), old, new_status))
     if changes:
-        lines = ["[LINE API Status] สถานะบริการเปลี่ยน"]
-        for _, name, old, new in changes:
-            frm = STATUS_TH.get(old, old) if old else "-"
-            lines.append(f"• {name}: {frm} → {STATUS_TH.get(new, new)}")
+        worst = any(n != "operational" for _, _, _, n in changes)
+        rows = [(f"• {name}:", f"{STATUS_TH.get(old, old) if old else '-'} → {STATUS_TH.get(new, new)}")
+                for _, name, old, new in changes]
         overall = (summary.get("status") or {}).get("description", "")
-        if overall:
-            lines.append(f"\nภาพรวม: {overall}")
-        lines.append(BASE)
+        rows.append(("🌐 ภาพรวม:", overall))
+        text = card(("⚠️ LINE API สถานะบริการเปลี่ยน" if worst else "✅ LINE API บริการกลับมาปกติ"),
+                    rows=rows, link=BASE)
 
         def commit_c(changes=changes):
             for cid, _, _, new in changes:
                 comp_state[cid] = new
-        text = "\n".join(lines)
         out.append(("comp:" + hashlib.sha256(text.encode()).hexdigest()[:16], text, commit_c))
     return out
 
@@ -287,13 +313,6 @@ def check_json(state: dict, first_run: bool) -> list[tuple]:
 # ---------------------------------------------------------------- Atom / RSS feeds
 ATOM_NS = "{http://www.w3.org/2005/Atom}"
 JST = timezone(timedelta(hours=9))
-FEED_STATUS = {
-    "investigating": "🔴 กำลังตรวจสอบ (Investigating)",
-    "identified": "🟠 พบสาเหตุแล้ว (Identified)",
-    "update": "🔴 อัปเดต (Update)",
-    "monitoring": "🟡 กำลังเฝ้าดู (Monitoring)",
-    "resolved": "✅ แก้ไขแล้ว (Resolved)",
-}
 
 
 def parse_feed_updates(content_html: str) -> list[dict]:
@@ -317,7 +336,7 @@ def parse_feed_updates(content_html: str) -> list[dict]:
 
 
 def jst_to_th(when: str) -> str:
-    """'Nov 26, 16:54 JST' -> '26/11 14:54 (เวลาไทย)' (year is not in the feed)."""
+    """'Nov 26, 16:54 JST' -> '26/11/2026 14:54 น.' (year is not in the feed)."""
     m = re.match(r"([A-Za-z]{3}) (\d{1,2}), (\d{1,2}):(\d{2}) JST", when)
     if not m:
         return when
@@ -326,7 +345,7 @@ def jst_to_th(when: str) -> str:
     dt = datetime(y, mon, int(m.group(2)), int(m.group(3)), int(m.group(4)), tzinfo=JST)
     if dt > datetime.now(JST) + timedelta(days=2):  # Dec entry read in Jan
         dt = dt.replace(year=y - 1)
-    return dt.astimezone(BKK).strftime("%d/%m/%Y %H:%M") + " (เวลาไทย)"
+    return dt.astimezone(BKK).strftime("%d/%m/%Y %H:%M น.")
 
 
 def read_feed(kind: str) -> list[dict]:
@@ -363,13 +382,11 @@ def check_feed(state: dict, first_run: bool, kind: str) -> list[tuple]:
         if first_run and (resolved or not NOTIFY_ON_FIRST_RUN):
             seen[key] = digest
             continue
-        status = FEED_STATUS.get(latest["status"].lower(), latest["status"] or "อัปเดต")
-        text = (
-            f"[LINE API Status] {status}\n"
-            f"{e['title']}\n"
-            f"เวลา: {jst_to_th(latest['when'])}\n\n"
-            f"{latest['body'][:1500]}\n\n{e['link']}"
-        )
+        st = latest["status"].lower()
+        text = card(headline("LINE API", st), e["title"],
+                    [("📍 สถานะ:", INCIDENT_TH.get(st, latest["status"] or "อัปเดต")),
+                     ("🕒 เวลา:", jst_to_th(latest["when"]))],
+                    latest["body"], e["link"])
 
         def commit(key=key, digest=digest):
             seen[key] = digest
@@ -387,19 +404,20 @@ def send_test() -> int:
         upd = sorted(inc.get("incident_updates") or [], key=lambda u: u.get("created_at") or "")[-1]
         latest = incident_message(inc, upd)
         overall = (summary.get("status") or {}).get("description", "")
-        comps = "\n".join(f"• {c['name']}: {STATUS_TH.get(c.get('status'), c.get('status'))}"
-                          for c in summary.get("components", []) if not c.get("group"))
+        comps = [(f"• {c['name']}:", STATUS_TH.get(c.get("status"), c.get("status")))
+                 for c in summary.get("components", []) if not c.get("group")]
     except Exception as e:
         print(f"JSON failed ({e}); using Atom", file=sys.stderr)
         e0 = read_feed("atom")[0]
         u = parse_feed_updates(e0["content"])[0]
-        latest = (f"[LINE API Status] {FEED_STATUS.get(u['status'].lower(), u['status'])}\n{e0['title']}\n"
-                  f"เวลา: {jst_to_th(u['when'])}\n\n{u['body']}\n\n{e0['link']}")
-        overall, comps = "", ""
-    text = "🧪 [ข้อความทดสอบ] ระบบแจ้งเตือนทำงานปกติ\n"
-    if overall:
-        text += f"\nสถานะตอนนี้: {overall}\n{comps}\n"
-    text += "\n— incident ล่าสุด —\n" + latest
+        st = u["status"].lower()
+        latest = card(headline("LINE API", st), e0["title"],
+                      [("📍 สถานะ:", INCIDENT_TH.get(st, u["status"])), ("🕒 เวลา:", jst_to_th(u["when"]))],
+                      u["body"], e0["link"])
+        overall, comps = "", []
+    text = card("🧪 ข้อความทดสอบ: ระบบแจ้งเตือนทำงานปกติ",
+                rows=([("🌐 ภาพรวม LINE API:", overall)] + comps) if overall else [])
+    text += "\n\n▼ ตัวอย่างข้อความแจ้งเตือน (incident ล่าสุด)\n\n" + latest
     if DRY_RUN:
         print(text)
         return 0

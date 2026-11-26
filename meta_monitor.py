@@ -41,7 +41,7 @@ NAMES = {"messenger": "Messenger Platform", "ig-messenger": "Messenger API for I
 
 def fmt_date(pub: str) -> str:
     try:
-        return email.utils.parsedate_to_datetime(pub).astimezone(monitor.BKK).strftime("%d/%m/%Y %H:%M") + " (เวลาไทย)"
+        return email.utils.parsedate_to_datetime(pub).astimezone(monitor.BKK).strftime("%d/%m/%Y %H:%M น.")
     except Exception:
         return pub or ""
 
@@ -90,9 +90,9 @@ def main() -> int:
             if first and (resolved or is_old(pub) or not monitor.NOTIFY_ON_FIRST_RUN):
                 active[key] = {"digest": digest, "title": title, "silent": True}
                 continue
-            icon = "✅" if resolved else "🔴"
-            text = (f"[Meta Status] {icon} {name}\n{title}\n"
-                    f"เวลา: {fmt_date(pub)}\n\n{desc[:1500]}\n\n{it.findtext('link') or page}")
+            text = monitor.card(
+                f"✅ {name} กลับมาใช้งานได้แล้ว" if resolved else f"🚨 {name} มีปัญหา",
+                title, [("🕒 เวลา:", fmt_date(pub))], desc, it.findtext("link") or page)
             if monitor.deliver(fs, f"item:{key}:{digest}", text):
                 active[key] = {"digest": digest, "title": title}
             else:
@@ -103,8 +103,8 @@ def main() -> int:
             if info.get("silent"):
                 del active[key]
                 continue
-            text = (f"[Meta Status] ✅ {name}: ไม่มีรายการปัญหาแล้ว (น่าจะกลับมาปกติ)\n"
-                    f"{info.get('title', '')}\n{page}")
+            text = monitor.card(f"✅ {name} กลับมาใช้งานได้แล้ว", info.get("title", ""),
+                                [("📍 สถานะ:", "ไม่มีรายการปัญหาบนหน้า status แล้ว")], link=page)
             if monitor.deliver(fs, f"gone:{key}", text):
                 del active[key]
             else:

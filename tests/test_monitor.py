@@ -88,8 +88,8 @@ DATA["incidents"] = [new_inc, old_resolved]
 DATA["summary"]["components"] = [comp("c1", "API", "major_outage"), comp("c2", "Webhook", "operational")]
 rc, msgs, _ = run()
 assert len(msgs) == 2, msgs
-assert "Investigating" in msgs[0] and "16:00" in msgs[0] and "<b>" not in msgs[0], msgs[0]
-assert "API" in msgs[1] and "Major Outage" in msgs[1]
+assert "กำลังตรวจสอบ" in msgs[0] and "16:00" in msgs[0] and "<b>" not in msgs[0], msgs[0]
+assert "API" in msgs[1] and "🔴 ล่ม" in msgs[1]
 
 # 4. rerun -> dedupe, nothing
 rc, msgs, _ = run(); assert msgs == [], msgs
@@ -102,7 +102,7 @@ DATA["line_fail"] = True
 rc, msgs, _ = run(); assert rc == 1 and msgs == []
 DATA["line_fail"] = False
 rc, msgs, _ = run()
-assert rc == 0 and len(msgs) == 2 and "Resolved" in msgs[0] and "Operational" in msgs[1], msgs
+assert rc == 0 and len(msgs) == 2 and "กลับมาใช้งานได้แล้ว" in msgs[0] and "🟢 ปกติ" in msgs[1], msgs
 rc, msgs, _ = run(); assert msgs == []
 
 # 6. RSS fallback when JSON API is unavailable (fresh state)
@@ -114,10 +114,10 @@ rss_item = lambda desc: f"""<?xml version="1.0"?><rss version="2.0"><channel><ti
 </channel></rss>"""
 DATA["rss"] = rss_item("&lt;p&gt;&lt;strong&gt;Investigating&lt;/strong&gt; - Looking into it.&lt;/p&gt;")
 rc, msgs, _ = run()
-assert len(msgs) == 1 and "Investigating" in msgs[0] and "Looking into it." in msgs[0], msgs
+assert len(msgs) == 1 and "กำลังตรวจสอบ" in msgs[0] and "Looking into it." in msgs[0], msgs
 rc, msgs, _ = run(); assert msgs == []
 DATA["rss"] = rss_item("&lt;p&gt;&lt;strong&gt;Resolved&lt;/strong&gt; - Fixed.&lt;/p&gt;&lt;p&gt;&lt;strong&gt;Investigating&lt;/strong&gt; - Looking into it.&lt;/p&gt;")
-rc, msgs, _ = run(); assert len(msgs) == 1 and "✅" in msgs[0] and "Fixed." in msgs[0] and "Looking" not in msgs[0], msgs
+rc, msgs, _ = run(); assert len(msgs) == 1 and "กลับมาใช้งานได้แล้ว" in msgs[0] and "Fixed." in msgs[0] and "Looking" not in msgs[0], msgs
 
 # 6b. Atom feed (real sample from api.line-status.info) when JSON is unavailable
 os.remove(env["STATE_FILE"])
@@ -138,7 +138,7 @@ new_entry = """  <entry>
 """
 DATA["atom"] = real.replace("  <entry>", new_entry + "  <entry>", 1)
 rc, msgs, _ = run()
-assert len(msgs) == 1 and "Investigating" in msgs[0] and "16:10" in msgs[0] and "webhook events are delayed" in msgs[0] and "incidents/newone" in msgs[0], msgs
+assert len(msgs) == 1 and "กำลังตรวจสอบ" in msgs[0] and "16:10" in msgs[0] and "webhook events are delayed" in msgs[0] and "incidents/newone" in msgs[0], msgs
 rc, msgs, _ = run(); assert msgs == []
 # switching to RSS for the same incident must not re-send
 DATA["atom_ok"] = False
@@ -160,7 +160,7 @@ inc2 = {"id": "n2", "name": "Outage report in the Messaging API", "status": "inv
 DATA["incidents"] = [inc2, old_resolved]
 DATA["line_fail"] = True
 rc, msgs, p = run()
-assert rc == 1 and msgs == [] and len(GCHAT) == 1 and "Investigating" in GCHAT[0], (GCHAT, p.stderr)
+assert rc == 1 and msgs == [] and len(GCHAT) == 1 and "กำลังตรวจสอบ" in GCHAT[0], (GCHAT, p.stderr)
 assert "SECRET" not in p.stderr + p.stdout
 rc, msgs, _ = run(); assert rc == 1 and GCHAT == [], GCHAT      # not re-sent to Google Chat
 DATA["line_fail"] = False

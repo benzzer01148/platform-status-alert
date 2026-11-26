@@ -76,7 +76,7 @@ STATE["line_fail"] = False
 rc, m, _ = run(); assert rc == 0 and len(m) == 1 and "Fix in progress" in m[0] and GCHAT == []
 # 4. event disappears -> back to normal
 FEED["ig-messenger"] = []
-rc, m, _ = run(); assert len(m) == 1 and "กลับมาปกติ" in m[0] and "Messages delayed" in m[0], m
+rc, m, _ = run(); assert len(m) == 1 and "กลับมาใช้งานได้แล้ว" in m[0] and "Messages delayed" in m[0], m
 rc, m, _ = run(); assert m == []
 # 5. fresh state with an old event -> silent
 os.remove(env["META_STATE_FILE"])
