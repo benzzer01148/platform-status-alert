@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xml:lang="en-US" xmlns="http://www.w3.org/2005/Atom">
+  <id>tag:api.line-status.info,2005:/history</id>
+  <link rel="alternate" type="text/html" href="https://api.line-status.info"/>
+  <link rel="self" type="application/atom+xml" href="https://api.line-status.info/history.atom"/>
+  <title>LINE API Status - Incident History</title>
+  <updated>2026-11-26T17:55:18+09:00</updated>
+  <author>
+    <name>LINE API</name>
+  </author>
+  <entry>
+    <id>tag:api.line-status.info,2005:Incident/32054520</id>
+    <published>2026-11-26T16:54:00+09:00</published>
+    <updated>2026-11-26T17:55:18+09:00</updated>
+    <link rel="alternate" type="text/html" href="https://api.line-status.info/incidents/5jmk2xm16blw"/>
+    <title>Outage report in LINE Login and LIFF/LINE MINI App</title>
+    <content type="html">&lt;p&gt; &lt;small&gt;Nov &lt;var data-var='date'&gt;26&lt;/var&gt;, &lt;var data-var='time'&gt;16:54&lt;/var&gt; JST&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - Due to an outage, some functions were not working properly. But the outage has been resolved. &lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>tag:api.line-status.info,2005:Incident/32053251</id>
+    <published>2026-11-26T14:30:00+09:00</published>
+    <updated>2026-11-26T16:41:46+09:00</updated>
+    <link rel="alternate" type="text/html" href="https://api.line-status.info/incidents/5q92fhbstq4k"/>
+    <title>Outage report in the Messaging API</title>
+    <content type="html">&lt;p&gt; &lt;small&gt;Nov &lt;var data-var='date'&gt;26&lt;/var&gt;, &lt;var data-var='time'&gt;14:30&lt;/var&gt; JST&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - The outage has been resolved. For more information, see the LINE Developers site.&lt;br /&gt;https://developers.line.biz/en/news/2026/11/26/all-products-outage/ &lt;/p&gt;</content>
+  </entry>
+  <entry>
+    <id>tag:api.line-status.info,2005:Incident/31984100</id>
+    <published>2026-11-19T22:00:16+09:00</published>
+    <updated>2026-11-19T22:00:16+09:00</updated>
+    <link rel="alternate" type="text/html" href="https://api.line-status.info/incidents/qw6hz4rmlf5c"/>
+    <title>Outage report in LIFF</title>
+    <content type="html">&lt;p&gt; &lt;small&gt;Nov &lt;var data-var='date'&gt;19&lt;/var&gt;, &lt;var data-var='time'&gt;22:00&lt;/var&gt; JST&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Resolved&lt;/strong&gt; - This incident has been resolved. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var='date'&gt;19&lt;/var&gt;, &lt;var data-var='time'&gt;18:35&lt;/var&gt; JST&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Identified&lt;/strong&gt; - The issue has been identified and a fix is being implemented. &lt;/p&gt; &lt;p&gt; &lt;small&gt;Nov &lt;var data-var='date'&gt;19&lt;/var&gt;, &lt;var data-var='time'&gt;17:40&lt;/var&gt; JST&lt;/small&gt;&lt;br&gt; &lt;strong&gt;Investigating&lt;/strong&gt; - In external browsers, authentication may fail when using certain older versions of the LIFF SDK. We apologize for any inconvenience. &lt;/p&gt;</content>
+  </entry>
+</feed>
